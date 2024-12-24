@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  mysqldb:
+    image: mysql:5.7
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=123456
+      - MYSQL_DATABASE=sequelize_db
+    volumes:
+      - db:/var/lib/mysql
+  adminer:
+    image: adminer:latest
+    container_name: adminer_container
+
+  app:
+    depends_on:
+      - mysqldb
+    build: ./nodejs-express-sequelize-mysql
+    restart: unless-stopped
+    env_file: ./nodejs-express-sequelize-mysql/.env
+    environment:
+      - DB_HOST=mysqldb
+      - DB_USER=root
+      - DB_PASSWORD=123456
+      - DB_NAME=sequelize_db
+      - DB_PORT=3306
+    stdin_open: true
+    tty: true
+
+  client:
+    build: ./fetch-client-app
+    restart: unless-stopped
+    tty: true
+  
+  haproxy:
+    image: haproxy:latest
+    container_name: haproxy
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - ./myNewCA/certs:/usr/local/etc/haproxy/certs
+    ports:
+      - 6868:6868 #backend
+      - 3000:3000 #frontend
+      - 9090:9090 #adminer
+    depends_on:
+      - app
+      - client
+      - adminer
+
+volumes: 
+  db:
+
